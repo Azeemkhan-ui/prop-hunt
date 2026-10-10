@@ -26,7 +26,7 @@ function parse(c){for(;;){const b=c.buf;if(b.length<2)return;
   const fin=b[0]&128,op=b[0]&15,masked=b[1]&128;let len=b[1]&127,off=2;
   if(len==126){if(b.length<4)return;len=b.readUInt16BE(2);off=4}
   else if(len==127){if(b.length<10)return;len=Number(b.readBigUInt64BE(2));off=10}
-  if(len>8192){c.sock.destroy();return}
+  if(len>20000){c.sock.destroy();return}
   const need=off+(masked?4:0)+len;if(b.length<need)return;
   let p=b.subarray(off+(masked?4:0),need);
   if(masked){const m=b.subarray(off,off+4);p=Buffer.from(p);for(let i=0;i<p.length;i++)p[i]^=m[i&3]}
@@ -78,6 +78,7 @@ function msg(c,s){let o;try{o=JSON.parse(s)}catch(e){return}if(!o||typeof o.t!='
     join(c,rm,o.name);break}
   case 'start':case 'next':if(r&&r.host===c&&(r.ph=='lobby'||r.ph=='end'))startMatch(r,c);break;
   case 'leave':leave(c);break;
+  case 'sig':{if(!r)return;const to=r.m.find(x=>x.id===o.to);if(to&&o.d&&typeof o.d=='object'&&JSON.stringify(o.d).length<12000)to.send({t:'sig',from:c.id,d:o.d});break}
   case 'pos':{if(!r||(r.ph!='hide'&&r.ph!='hunt')||c.caught)return;if(c.hunter&&r.ph=='hide')return;
     if(!num(o.x,0,1000)||!num(o.y,0,640)||!num(o.gy,0,3)||!num(o.ang,-10,10)||!num(o.jy,-1,4)||(o.fl!==0&&o.fl!==1))return;
     const t=now();
